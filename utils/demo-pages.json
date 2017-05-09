@@ -1,0 +1,351 @@
+[
+	{
+		"path": "/Account/Login",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},
+			{
+				"title": "MSGraphService",
+				"url": "services/ms_graph_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "account/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "account/templates/account/login.html"
+      		},
+      		{
+        		"title": "Template",
+        		"url": "account/templates/account/O365login.html"
+      		}
+		]
+	},
+	{
+		"path": "/Account/Register",
+		"links": [
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "account/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "account/templates/account/register.html"
+      		}
+		]
+	},
+	{
+		"path": "/Link",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},			
+			{
+				"title": "LinkService",
+				"url": "services/link_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},
+			{
+				"title": "MSGraphService",
+				"url": "services/ms_graph_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "link/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "link/templates/link/index.html"
+      		}
+		]
+	},
+	{
+		"path": "/Link/CreateLocal",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},
+			{
+				"title": "LinkService",
+				"url": "services/link_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "link/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "link/templates/link/createlocal.html"
+      		}
+		]
+	},
+	{
+		"path": "/Link/LoginLocal",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},
+			{
+				"title": "LinkService",
+				"url": "services/link_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "link/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "link/templates/link/loginlocal.html"
+      		}
+		]
+	},
+	{
+		"path": "/Admin",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},			
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},			
+			{
+				"title": "LinkService",
+				"url": "services/link_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},
+			{
+				"title": "AADGraphService",
+				"url": "services/aad_graph_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "admin/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "admin/templates/admin/index.html"
+      		}
+		]
+	},
+	{
+		"path": "/Admin/LinkedAccounts",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "LinkService",
+				"url": "services/link_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "admin/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "admin/templates/admin/linkedaccounts.html"
+      		}
+		]
+	},
+	{
+		"path": "/UnlinkAccount/",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "LinkService",
+				"url": "services/link_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "admin/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "admin/templates/admin/unlinkaccount.html"
+      		}
+		]
+	},
+	{
+		"path": "/Schools",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},		
+			{
+				"title": "EducationService",
+				"url": "services/education_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "schools/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "schools/templates/schools/index.html"
+      		}
+		]
+	},
+	{
+		"path": "/Schools//Classes",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "MSGraphService",
+				"url": "services/ms_graph_service.py"
+			},	
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},		
+			{
+				"title": "EducationService",
+				"url": "services/education_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "schools/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "schools/templates/schools/classes.html"
+      		}
+		]
+	},
+	{
+		"path": "/Schools//Classes/",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},
+			{
+				"title": "EducationService",
+				"url": "services/education_service.py"
+			},
+			{
+				"title": "MSGraphService",
+				"url": "services/ms_graph_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "schools/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "schools/templates/schools/classdetails.html"
+      		}
+		]
+	},
+	{
+		"path": "/Schools//Users",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},		
+			{
+				"title": "EducationService",
+				"url": "services/education_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "schools/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "schools/templates/schools/users.html"
+      		}
+		]
+	},
+	{
+		"path": "/Manage/AboutMe",
+		"links": [
+			{
+				"title": "AuthService",
+				"url": "services/auth_service.py"
+			},
+			{
+				"title": "UserService",
+				"url": "services/user_service.py"
+			},
+			{
+				"title": "TokenService",
+				"url": "services/token_service.py"
+			},
+			{
+				"title": "EducationService",
+				"url": "services/education_service.py"
+			},
+			{
+				"title": "View",
+        		"url": "managements/views.py"
+			},
+      		{
+        		"title": "Template",
+        		"url": "managements/templates/managements/aboutme.html"
+      		}
+		]
+	}
+]

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% comment %}
+ *   * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.  
+ *   * See LICENSE in the project root for license information.  
+{% endcomment %}  
+
+{% block title %}About Me{% endblock %}
+
+{% block content %}
+<div class="container ">
+	<h2>                
+    	About Me
+	</h2>
+    <div class="margin-top-12 margin-btm-12 aboutme">
+		<b>Username:</b><br /> {{ user.display_name }} 
+		{% if user.photo %}<img src="{{ user.photo }}" />{% endif %}</a>
+    </div>
+    <div class="margin-top-12 margin-btm-12">
+		<b>Logged in as:</b><br /> {{ user.main_role }}
+    </div>
+	{% if show_color %}
+    <div class="margin-btm-12">
+        <b>Favorite Color:</b>
+		<form action="/Manage/UpdateFavoriteColor" method="post">{% csrf_token %}
+			<select name="favoritecolor">
+				{% for color in colors %}
+				{% if color.value == favorite_color %}
+				<option value={{ color.value }} selected>
+				{% else %}
+				<option value={{ color.value }}>
+				{% endif %}
+				{{ color.name }}
+				</option>
+				{% endfor %}
+    		</select>
+            <input type="submit"  value="Save"/>
+			{{ savemessage|safe }}
+		</form>
+    </div>
+	{% endif %}
+    <div class="margin-btm-12 ">
+        <b>Classes:</b> 
+        <br />
+        <div >
+			{% for item in groups %}
+				{{ item.display_name }} <br />
+			{% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

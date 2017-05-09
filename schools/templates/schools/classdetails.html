@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% comment %}
+ *   * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.  
+ *   * See LICENSE in the project root for license information.  
+{% endcomment %}  
+
+{% load set_var %}
+
+{% block title %}Class Details{% endblock %}
+
+{% block headjs %}
+{% endblock %}
+
+{% block content %}
+<div class="row schools class-details">
+	<div class="tophero">
+    	<div class="container">
+            <div class="col-md-6 secondnav">
+                <a href="/Schools"> All Schools</a>
+				> <a href="/Schools/{{ school_object_id }}/Classes">{{ school.name }}</a>
+				> {{ section.course_name }}
+            </div>
+        </div>
+        <div class="container">
+            <div class="a-heading ">Class Details</div>
+			<div class="b-title"> {{ section.course_number }} | {{ section.course_displayname}}</div>
+        </div>
+        <div class="container coursedetail">
+            <div class="col-md-6">
+				<span>Course Name:</span> {{ section.course_name }}
+                <br />
+				<span>Description:</span> {{ section.course_desc }}
+                <br />
+				<span>Period:</span> {{ section.course_period }}
+                <br />
+				<span>Term Name:</span> {{ section.course_termname }}
+                <br />
+                <span>Start/Finish Date:</span>
+				<span id="termdate">{{ section.course_termstartdate }}</span>
+                <span id="termdate-separator"> - </span>
+				<span id="termdate">{{ section.course_termenddate }}</span>
+            </div>
+            <div class="col-md-6">
+				{% for teach in teachers %}
+				<span>Teacher:</span> {{ teach.name }}
+				{% if not forloop.last %}<br />{% endif %} 
+				{% endfor %}
+            </div>
+        </div>
+        <div style="clear:both;"></div>
+    </div>
+    <div class="students">
+        <ul class="nav nav-tabs">
+            <li class="active"><a data-toggle="tab" href="#students"><span>Students</span></a></li>
+            <li><a data-toggle="tab" href="#documents" id="classdoclink"><span>Class Documents</span></a></li>
+            <li><a data-toggle="tab" href="#conversations"><span>Conversations</span></a></li>
+            <li><a data-toggle="tab" href="#seatingchart"><span>SEATING CHART</span></a></li>
+        </ul>
+        <div class="tab-content">
+            <div id="students" class="tab-pane fade in active">
+				{% if students|length == 0%}
+				<div class="nodata"> There is no data available for this page at this time.</div>
+				{% else %}
+				<table class="table  table-green table-student tablesorter" id="studentsTable">
+					<thead>
+						<tr class="table-green-header">
+							<th class="tdleft">student name</th>
+							<th>grade</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for student in students %}
+						<tr class="tr-content">
+							<td><img src="/static/Images/header-default.jpg" realheader="{{ student.photo|safe }}"/> {{ student.name }}</td>
+							<td>{{ student.grade }}</td>
+						</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				{% endif %}
+            </div>
+            <div id="documents" class="tab-pane fade">
+				{% if documents|length == 0 %}
+				<div class="nodata"> There is no data available for this page at this time.</div>
+				{% else %}
+				<table id="studoc" class="table  table-green table-student tablesorter">
+					<thead>
+						<tr class="table-green-header">
+							<th class="border-holder"></th>
+							<th class="space-holder left"></th>
+							<th class="tdleft">document name</th>
+							<th class="tdleft">modified</th>
+							<th class="tdleft">modified by</th>
+							<th class="space-holder right"></th>
+						</tr>
+						<tr class="blanktr">
+							<th colspan="5"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for document in documents %}
+						<tr class="tr-content">
+							<td class="border-holder"></td>
+							<td class="space-holder left"></td>
+							<td>
+								<a target="_blank" href="{{ document.web_url }}">{{ document.name }}</a>
+							</td>
+							<td>{{ document.last_modified_date_time }}</td>
+							<td>{{ document.last_modified_user_name }}</td>
+							<td class="space-holder right"></td>
+						</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				{% endif %}
+				<span class="see-more"><a href="{{ documents_root }}" target="_blank">See All</a></span>
+                <br style="clear:both" />
+            </div>
+            <div id="conversations" class="tab-pane fade">
+				{% if conversations|length == 0 %}
+				<div class="nodata"> There is no data available for this page at this time.</div>
+				{% else %}
+				<table id="stuconv" class="table  table-green table-student">
+					<tbody>
+						{% for conversation in conversations %}
+						<tr class="tr-content">
+							<td class="border-holder"></td>
+							<td class="space-holder left"></td>
+							<td>
+								<a target="_blank" href="{{ conversation.custom_data.url }}">{{ conversation.topic }}</a>
+							</td>
+							<td class="space-holder right"></td>
+						</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				{% endif %}
+				<span class="see-more"><a target="_blank" href="{{ conversations_root }}">See All</a></span>
+                <br style="clear:both" />
+            </div>
+            <div id="seatingchart" class="tab-pane fade ">
+                <div class="left" id="dvleft">
+					{% if not user.is_student %}
+					<div class="tip"> To assign seats for each student, drag and drop student profile icons below onto the seating map to the right.</div>
+					{% else %}
+					<div class="assignseat tip"><div class="greenicon" style="background-color:{{ favorite_color }}"></div>Your assigned seat </div>
+					{% endif %}
+                    <ul id="lstproducts">
+						{% for student in students %}
+							<li id="{{ student.object_id }}">
+								<img src="/static/Images/header-default.jpg" realheader={{ student.photo }}/>
+								<span class="disname">{{ student.name }}</span>
+								{% if student.custom_data.position == 0 %}
+								<span class="seated hideitem">
+								{% else %}
+								<span class="seated">
+								{% endif %}
+								seated &#10003;
+								</span>
+							</li>
+						{% endfor %}
+                    </ul>
+                    <div id="hidtiles" class="hideitem">
+						{% for student in students %}
+							{% if student.custom_data.position != 0 %}
+								{% if student.custom_data.favorite_color %}
+								<div class="deskcontainer white green" style="background-color:{{ student.custom_data.favorite_color }}" position="{{ student.custom_data.position }}" userid="{{ student.object_id }}">
+								{% else %}
+								<div class="deskcontainer white" style="" position="{{ student.custom_data.position }}" userid="{{ student.object_id }}">
+								{% endif %}
+							{% else %}
+								{% if student.custom_data.favorite_color %}
+								<div class="deskcontainer unsaved green" style="background-color:{{ student.custom_data.favorite_color }}" position="{{ student.custom_data.position }}" userid="{{ student.object_id }}">
+								{% else %}
+								<div class="deskcontainer unsaved" style="" position="{{ student.custom_data.position }}" userid="{{ student.object_id }}">
+								{% endif %}
+							{% endif %}
+									<div class="deskclose"><img src="/static/Images/close.png"></div>
+									<div class="deskicon">
+										<img src="/static/Images/header-default.jpg" realheader="{{ student.photo }}" />
+									</div>
+									<div class="stuname">{{ student.name }}</div>
+								</div>
+						{% endfor %}
+                    </div>
+                </div>
+                <div class="right" id="dvright">
+					{% if not user.is_student %}
+						<div class="teacherdesk" style="background-color:{{ favorite_color }}">Teacher's desk</div>
+					{% else %}
+						<div class="teacherdesk" style="">Teacher's desk</div>
+					{% endif %}
+                    <div>
+                        <div id="graybg">
+							{% for i in seatrange%}
+							<div class="desktile" position="{{ i }}"></div>
+							{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div id="dvedit" class="dvedit">
+					{% if not user.is_student %}
+						<img id="imgedit" src="/static/Images/edit.png" />
+						<img id="imgsave" src="/static/Images/save.png" />
+						<img id="imgcancel" src="/static/Images/cancel.png" />
+					{% endif %}
+                </div>
+                <br style="clear:both" />
+            </div>
+        </div>
+    </div>
+</div>
+<input type="hidden" name="hidSectionid" id="hidSectionid" value="{{ class_object_id }}" />
+{% endblock %}
+
+{% block basejs%}
+<script src="/static/js/jquery-3.1.1.js"></script>
+<script src="/static/js/modernizr-2.6.2.js"></script>
+<script src="/static/js/jquery.tablesorter.min.js"></script>
+<script src="/static/js/moment.min.js"></script>
+<script src="/static/js/classdetail.js"></script>
+{% endblock %}
+
+{% block localjs %}
+<script src="/static/js/bootstrap.js"></script>
+<script src="/static/js/respond.js"></script>
+<script src="/static/js/site.js"></script>
+{% endblock %}

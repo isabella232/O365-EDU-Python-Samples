@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% comment %}
+ *   * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.  
+ *   * See LICENSE in the project root for license information.  
+{% endcomment %}  
+
+{% block title %}Link Office 365 & Local Account{% endblock %}
+
+{% block content %}
+<h2>Link Office 365 & Local Account</h2>
+{% if not user.are_linked %}
+    <p>This page will enable you to link your Office 365 & Local Account together to successfully use the demo application.</p>
+	{% if user.is_local %}
+        <div class="form-horizontal" id="linkAccountPrompt">
+            <hr />
+			<form action="/Link/LoginO365" method="post">{% csrf_token %}
+                <p>
+                    <input type="submit" value="Link to existing O365 account" class="btn btn-primary" /> &nbsp; &nbsp;
+                </p>
+			</form>
+        </div>
+	{% else %}
+        <hr />
+        <div class="form-horizontal">
+			{% if local_existed %}
+			<p>{{ local_message }}</p>
+			{% endif %}
+            <p>
+			{% if local_existed %}
+			<a class="btn btn-primary disabled" href="javascript:void(0)">Continue with new Local Account</a>
+			{% else %}
+			<a class="btn btn-primary" href="Link/CreateLocal">Continue with new Local Account</a>
+			{% endif %}
+          	&nbsp; &nbsp;
+			<a class="btn btn-primary" href="Link/LoginLocal">Link with existing Local Account</a>
+         	&nbsp; &nbsp;
+            </p>
+        </div>
+	{% endif %}
+{% else %}
+    <div>
+        <p>Your local account and Office 365 account are now linked.</p>
+        <p>
+            <ul>
+				<li>Local account: {{ user.email }}</li>
+				<li>Office 365 account: {{ user.o365_email }}</li>
+            </ul>
+        </p>
+		<p><a class="btn btn-default" href="/">Return to home</a></p>
+    </div>
+{% endif %}
+{% endblock %}
+
