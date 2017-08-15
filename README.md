@@ -52,23 +52,6 @@ This sample is implemented with the Python language and [Django](https://www.dja
   - [Django](https://www.djangoproject.com/download/) 1.11 or above
   - [SQLite](https://www.sqlite.org/)
 
-**Optional configuration**:
-
-A feature in this sample demonstrates calling the Bing Maps API which requires a key to enable the Bing Maps feature. 
-
-Create a key to enable Bing Maps API features in the app:
-
-1. Open [https://www.bingmapsportal.com/](https://www.bingmapsportal.com/) in your web browser and sign in.
-
-2. Click  **My account** -> **My keys**.
-
-3. Create a **Basic** key, select **Public website** as the application type.
-
-4. Copy the **Key** and save it. 
-
-   ![](Images/bing-maps-key.png)
-
-   > **Note:** The key is used in the app configuration steps for debug and deploy.
 
 
 ## Register the application in Azure Active Directory
@@ -111,7 +94,7 @@ Create a key to enable Bing Maps API features in the app:
 
      | API                            | Application Permissions | Delegated Permissions                    |
      | ------------------------------ | ----------------------- | ---------------------------------------- |
-     | Microsoft Graph                |                         | Read all users' full profiles<br>Read all groups<br>Read directory data<br>Access directory as the signed in user<br>Sign users in |
+     | Microsoft Graph                | Read directory data     | Read all users' full profiles<br>Read directory data<br>Read directory data<br>Access directory as the signed in user<br>Sign users in |
      | Windows Azure Active Directory |                         | Sign in and read user profile<br>Read and write directory data |
 
      ![](/Images/aad-create-app-06.png)
@@ -138,7 +121,6 @@ Run the app:
 
    - **clientId**: use the Client Id of the app registration you created earlier.
    - **clientSecret**: use the Key value of the app registration you created earlier.
-   - **BingMapKey**: use the key of Bing Map you got earlier. This setting is optional.
    - **SourceCodeRepositoryURL**: use the URL of this repository.
 
 2. Open terminal and navigate to the source code folder. Execute the command below:
@@ -215,8 +197,6 @@ Run the app:
    - **Client Id**: use the Client Id of the app registration you created earlier.
 
    - **Client Secret**: use the Key value of the app registration you created earlier.
-
-   - **Bing Map Key**: use the key of Bing Map you got earlier. This setting is optional. It will hide Bing map icon on schools page if this field is empty.
 
    - Check **I agree to the terms and conditions stated above**.
 
@@ -349,13 +329,13 @@ The **EducationServiceClient** is the core class of the library. It is used to e
 
 ~~~typescript
 def get_schools(self):
-    url = self.api_base_uri + 'administrativeUnits?api-version=beta'
+    url = self.api_base_uri + 'administrativeUnits'
     return self.rest_api_service.get_object_list(url, self.access_token, model=School)
 ~~~
 
 ~~~typescript
 def get_school(self, object_id):
-    url = self.api_base_uri + 'administrativeUnits/%s?api-version=beta' % object_id
+    url = self.api_base_uri + 'administrativeUnits/%s' % object_id
     return self.rest_api_service.get_object(url, self.access_token, model=School)
 ~~~
 
@@ -364,13 +344,13 @@ def get_school(self, object_id):
 ~~~typescript
 def get_sections(self, school_id, top=12, nextlink=''):
     skiptoken = self._get_skip_token(nextlink)
-    url = self.api_base_uri + "groups?api-version=1.5&$filter=extension_fe2174665583431c953114ff7268b7b3_Education_ObjectType eq 'Section' and extension_fe2174665583431c953114ff7268b7b3_Education_SyncSource_SchoolId eq '%s'&$top=%s%s" % (school_id, top, skiptoken)
+    url = self.api_base_uri + "groups?$filter=extension_fe2174665583431c953114ff7268b7b3_Education_ObjectType eq 'Section' and extension_fe2174665583431c953114ff7268b7b3_Education_SyncSource_SchoolId eq '%s'&$top=%s%s" % (school_id, top, skiptoken)
     return self.rest_api_service.get_object_list(url, self.access_token, model=Section, next_key='odata.nextLink')
 ~~~
 
 ```typescript
 def get_section(self, object_id):
-    url = self.api_base_uri + 'groups/%s?api-version=1.5' % object_id
+    url = self.api_base_uri + 'groups/%s' % object_id
     return self.rest_api_service.get_object(url, self.access_token, model=Section)
 ```
 **Get users**
@@ -378,7 +358,7 @@ def get_section(self, object_id):
 ```typescript
 def get_members(self, object_id, top=12, nextlink=''):
     skiptoken = self._get_skip_token(nextlink)
-    url = self.api_base_uri + 'administrativeUnits/%s/members?api-version=beta&$top=%s%s' % (object_id, top, skiptoken)
+    url = self.api_base_uri + 'administrativeUnits/%s/members?$top=%s%s' % (object_id, top, skiptoken)
     return self.rest_api_service.get_object_list(url, self.access_token, model=EduUser, next_key='odata.nextLink')
 ```
 Below are some screenshots of the sample app that show the education data.

@@ -2,7 +2,6 @@
  *   * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.  
  *   * See LICENSE in the project root for license information.  
 '''
-
 import json
 import requests
 import urllib.parse
@@ -10,12 +9,13 @@ import constant
 
 class BingMapService(object):
     
-    def __init__(self, bing_map_key):
-        self._base_uri = 'http://dev.virtualearth.net/REST/v1/Locations/US/%s?output=json&key=' + bing_map_key
+    def __init__(self):
+        self._bing_map_key = constant.bing_map_key
+        self._base_uri = 'http://dev.virtualearth.net/REST/v1/Locations/US/%s?output=json&key=' + self._bing_map_key
 
     def get_lat_lon(self, state, city, address):
-        lat = None
-        lon = None
+        lat = ''
+        lon = ''
         state = state
         city = urllib.parse.quote(city)
         address = urllib.parse.quote(address)
