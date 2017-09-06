@@ -61,9 +61,9 @@ The code in the following sections is part of the full featured Python app and p
 
 ## Build and debug locally
 
-Make sure that Django can run on your local machine. Otherwise follow [this article](https://docs.djangoproject.com/en/1.11/topics/install/) to create a dev environment. 
+Make sure that Django can run on local machine. Otherwise following [this article](https://docs.djangoproject.com/en/1.11/topics/install/) to create a dev environment. 
 
- This project uses Visual Studio Code as the editor.
+ Visual Studio code is used as editor.
 
 
 
@@ -71,29 +71,29 @@ Make sure that Django can run on your local machine. Otherwise follow [this arti
 
 1. Creating a project
 
-   From the command line, navigate into a directory where you’d like to store your code, then run the following command. You can rename **BasicSSO** to whatever that make sense.  
+   From the command line, `cd` into a directory where you’d like to store your code, then run the following command. You can rename **BasicSSO** to whatever that make sense.  
 
    `django-admin startproject BasicSSO `
 
 2. Creating the account app
 
-   To create your app, make sure you’re in the same directory as the file `manage.py` and type this command:
+   To create your app, make sure you’re in the same directory as `manage.py` and type this command:
 
    `python manage.py startapp account`
 
 #### Update source code
 
-1. Open **BasicSSO** project with Visual Studio Code. Create a file named **env.bat** in the same directory as `manage.py`. Add **CLIENT_ID** and **CLIENT_SECRET** to the file.
+1. Open **BasicSSO** project with Visual Studio code. Create a file named **env.bat** in the same directory as `manage.py`. Add **CLIENT_ID** and **CLIENT_SECRET** to the file.
    - **CLIENT_ID**: use the Client Id of the app registration you created earlier.
    - **CLIENT_SECRET**: use the Key value of the app registration you created earlier.
 
      ​	  ![proj01](Images/proj01.png)
 
-2.  Create a new folder named **templates** under the **account** folder, and then create a new folder named **account** under **templates** folder. Under new created account folder create two files named **index.html** and **helloworld.html**.
+2.  Create a new folder named **templates** under **account** folder, and then create a new folder named **account** under **templates** folder. Under new created account folder create two files named **index.html** and **helloworld.html**.
 
      ​	  ![proj02](Images/proj02.png)
 
-   Edit **index.html**,  delete all code then copy and paste the following code.
+   Edit **index.html**,  delete all code and copy the following code to paste.
    ```python
     <!DOCTYPE html>
     <html>
@@ -117,7 +117,7 @@ Make sure that Django can run on your local machine. Otherwise follow [this arti
     </body>
     </html>
    ```
-3. Edit **helloworld.html**, delete all code then copy and paste the following code.
+   Edit **helloworld.html**, delete all code and copy the following code to paste.
    ```python
     <!DOCTYPE html>
     <html>
@@ -133,7 +133,7 @@ Make sure that Django can run on your local machine. Otherwise follow [this arti
     </body>
     </html>
    ```
-4. Open **/account/views.py**, delete all code then copy and paste the following code.
+3. Open **/account/views.py**, delete all code and copy the following code to paste.
 
 
 
@@ -190,7 +190,7 @@ def logoff(request):
 
      ​	  ![proj04](Images/proj04.png)
 
-5. In the same file, edit **TEMPLATES** as below.
+In the same file, edit **TEMPLATES** as below.
 
 
 
@@ -209,7 +209,7 @@ def logoff(request):
 	        },
 	    },
 	]
-5. Edit **urls.py** under **/BasicSSO/BasicSSO** folder. Delete all code then copy and paste the following code.
+5. Edit **urls.py** under **/BasicSSO/BasicSSO** folder. Delete all code and copy the following code to paste.
 
     ​
     ```python
@@ -227,239 +227,367 @@ def logoff(request):
 
     ```
     ​
-6. Create a new folder named **models** in the same directory as `manage.py`. Create a new file named **auth.py** under **models** folder. Edit **auth.py**, delete all code then copy and paste the following code.
+6. Create a new folder named **models** in the same directory as `manage.py`. Create a new file named **auth.py** under **models** folder. Edit **auth.py**, delete all code and copy the following code to paste.
 
 
 
 
 ```python
 import json
+
 import constant
+
 class O365User(object):
+
     def __init__(self, id=None, email=None, first_name=None, last_name=None, display_name=None, tenant_id=None, tenant_name=None, roles=None, photo=None):
+
         self._id = id
+
         self._email = email
+
         self._first_name = first_name
+
         self._last_name = last_name
+
         self._display_name = display_name
+
         self._tenant_id = tenant_id
+
         self._tenant_name = tenant_name
+
         self._roles = roles
+
         self._photo = photo
 
     @property
+
     def id(self):
+
         return self._id
 
     @property
+
     def email(self):
+
         return self._email
 
     @property
+
     def first_name(self):
+
         return self._first_name
 
     @property
+
     def last_name(self):
+
         return self._last_name
 
     @property
+
     def display_name(self):
+
         return self._display_name
 
     @property
+
     def tenant_id(self):
+
         return self._tenant_id
 
     @property
+
     def tenant_name(self):
+
         return self._tenant_name
 
     @property
+
     def roles(self):
+
         return self._roles
 
     @property
+
     def photo(self):
+
         return self._photo
 
     def to_json(self):
+
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
     @staticmethod
+
     def from_json(value):
+
         obj = O365User()
+
         obj.__dict__.update(json.loads(value))
+
         return obj
 
 class UnifiedUser(object):
+
     def __init__(self, request):
+
         self._request = request
+
         if constant.o365_user_session_key in self._request.session:
+
             user_json = self._request.session[constant.o365_user_session_key]
+
             self._o365_user = O365User.from_json(user_json)
+
         else:
+
             self._o365_user = None
 
     @property
+
     def is_authenticated(self):
+
         return self.o365_user is not None or self.local_user.is_authenticated
 
     @property
+
     def are_linked(self):
+
         return self.o365_user is not None and self.local_user.is_authenticated
 
     @property
+
     def is_admin(self):
+
         return self.o365_user is not None and constant.Roles.Admin in self.o365_user.roles
 
     @property
+
     def is_teacher(self):
+
         return self.o365_user is not None and constant.Roles.Faculty in self.o365_user.roles
 
     @property
+
     def is_student(self):
+
         return self.o365_user is not None and constant.Roles.Student in self.o365_user.roles
 
     @property
+
     def email(self):
+
         return self.local_user.email
 
     @property
+
     def o365_email(self):
+
         return self.o365_user.email
 
     @property
+
     def o365_user_id(self):
+
         return self.o365_user.id
 
     @property
+
     def user_id(self):
+
         return self.local_user.id
 
     @property
+
     def tenant_id(self):
+
         return self.o365_user.tenant_id
 
     @property
+
     def is_local(self):
+
         return self.o365_user is None
 
     @property
+
     def is_o365(self):
+
         return not self.local_user.is_authenticated
 
     @property
+
     def display_name(self):
+
         user = self.o365_user
 
         if not user and self.local_user.is_authenticated:
+
             user = self.local_user
+
         if user:
+
             if user.first_name and user.last_name:
+
                 return "%s %s" % (user.first_name, user.last_name)
+
             else:
+
                 return user.email
+
         return ''
 
     @property
+
     def main_role(self):
+
         if not self.o365_user:
+
             return None
+
         roles = self.o365_user.roles
+
         for role in [constant.Roles.Admin, constant.Roles.Faculty, constant.Roles.Student]:
+
             if role in roles:
+
                 return role
+
         return None
 
     @property
+
     def photo(self):
+
         if not self.o365_user:
+
             return None
+
         return self.o365_user.photo
 
     @property
+
     def local_user(self):
+
         return self._request.user
 
     @property
+
     def o365_user(self):
+
         return self._o365_user
 ```
 
 
 
-7. Create a new folder named **services** in the same directory as `manage.py`. Create a new file named **auth_service.py** under **services** folder. Edit **auth_service.py**, delete all code then copy and paste the following code.
+7. Create a new folder named **services** in the same directory as `manage.py`. Create a new file named **auth_service.py** under **services** folder. Edit **auth_service.py**, delete all code and copy the following code to paste.
 
 
 
 
 ```python
 import urllib
+
 import constant
+
 import uuid
+
 import jwt
+
 import requests
+
 from models.auth import O365User, UnifiedUser
 
 class AuthService(object):
+
     @staticmethod
+
     def get_redirect_uri(request, relative_redirect_uri):
+
         scheme = request.scheme
+
         host = request.get_host()
+
         return '%s://%s/%s' % (scheme, host, relative_redirect_uri)
 
     @staticmethod
+
     def get_authorization_url(request, response_type, relative_redirect_uri, state, extra_params = None):
+
         params  = {
+
             'client_id' : constant.client_id,
+
             'response_type': response_type,
+
             'response_mode': 'form_post',
+
             'redirect_uri': AuthService.get_redirect_uri(request, relative_redirect_uri),
+
             'state': state
+
             }
 
         if extra_params:
+
             params.update(extra_params)
 
         request.session['auth_state'] = state
+
         nonce = params.get('nonce')
+
         if nonce:
+
             request.session['auth_nonce'] = nonce
 
         return constant.login_base_uri + urllib.parse.urlencode(params).replace('%2B', '+')
 
     @staticmethod
+
     def get_random_string():
+
         return uuid.uuid4().hex
 
     @staticmethod
+
     def validate_state(request):
+
         if request.POST.get('state') != request.session.get('auth_state'):
+
             raise Exception('state does not match')
 
     @staticmethod
+
     def get_id_token(request):
+
         id_token = request.POST.get('id_token')
+
         return jwt.decode(id_token, verify=False)
 
     @staticmethod
+
     def get_current_user(request):
+
         return UnifiedUser(request)
 
     @staticmethod
+
     def set_o365_user(request, o365_user):
+
         request.session[constant.o365_user_session_key] = o365_user.to_json()
 
     @staticmethod
+
     def clear_o365_user(request):
+
         if constant.o365_user_session_key in request.session:
+
             del request.session[constant.o365_user_session_key]
 ```
 
 
 
-8. create a new file named **constant.py** in the same directory as `manage.py`. Edit it, delete all code then copy and paste the following code.
+8. create a new file named **constant.py** in the same directory as `manage.py`. Edit it, delete all code and copy the following code to paste.
 
     ​
 
@@ -469,18 +597,29 @@ class AuthService(object):
 import os
 
 client_id = os.environ['ClientId']
+
 client_secret = os.environ['ClientSecret']
+
 source_code_repository_url = os.environ["SourceCodeRepositoryUrl"]
 
+
 authority = 'https://login.microsoftonline.com/common/'
+
 login_base_uri = 'https://login.microsoftonline.com/common/oauth2/authorize?'
+
 log_out_url = 'https://login.microsoftonline.com/common/oauth2/logout?redirect_uri=%s&post_logout_redirect_uri=%s'
+
 microsoft_certs_uri = 'https://login.microsoftonline.com/common/discovery/v2.0/keys'
+
 company_admin_role_name = "Company Administrator"
 
+
 o365_username_cookie = "O365CookieUsername"
+
 o365_email_cookie = "O365CookieEmail"
+
 o365_user_session_key = '_o365_user'
+
 
 class Resources():
     AADGraph = "https://graph.windows.net/"
