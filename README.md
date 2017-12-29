@@ -28,7 +28,7 @@ The sample demonstrates:
 
   After linking accounts, users can use either local or Office 365 accounts to log into the sample website and use it.
 
-- Getting schools, sections, teachers, and students from Office 365 Education:
+- Getting schools, classes, teachers, and students from Office 365 Education:
 
   - [Office 365 Schools REST API reference](https://msdn.microsoft.com/office/office365/api/school-rest-operations)
 
@@ -94,10 +94,27 @@ This sample is implemented with the Python language and [Django](https://www.dja
 
      | API                            | Application Permissions | Delegated Permissions                    |
      | ------------------------------ | ----------------------- | ---------------------------------------- |
-     | Microsoft Graph                | Read directory data     | Read all users' full profiles<br>Read directory data<br>Read directory data<br>Access directory as the signed in user<br>Sign users in |
+     | Microsoft Graph                |                         | Read directory data<br>Access directory as the signed in user<br>Sign users in<br> Have full access to all files user can access<br> Have full access to user files<br> Read users' class assignments without grades<br> Read and write users' class assignments without grades<br> Read users' class assignments and their grades<br> Read and write users' class assignments and their grades |
      | Windows Azure Active Directory |                         | Sign in and read user profile<br>Read and write directory data |
 
      ![](/Images/aad-create-app-06.png)
+
+     **Application Permissions**
+
+     | Permission          | Description                              |
+     | ------------------- | ---------------------------------------- |
+     | Read directory data | Allows the app to read data in your organization's directory, such as users, groups and apps, without a signed-in user. |
+
+     **Delegated Permissions**
+
+     | Permission                             | Description                              |
+     | -------------------------------------- | ---------------------------------------- |
+     | Read all users' full profiles          | Allows the app to read the full set of profile properties, reports, and managers of other users in your organization, on behalf of the signed-in user. |
+     | Read directory data                    | Allows the app to read data in your organization's directory, such as users, groups and apps. |
+     | Access directory as the signed in user | Allows the app to have the same access to information in the directory as the signed-in user. |
+     | Sign users in                          | Allows users to sign in to the app with their work or school accounts and allows the app to see basic user profile information. |
+     | Sign in and read user profile          | Allows users to sign-in to the app, and allows the app to read the profile of signed-in users. It also allows the app to read basic company information of signed-in users. |
+     | Read and write directory data          | Allows the app to read and write data in your organization's directory, such as users, and groups.  It does not allow the app to delete users or groups, or reset user passwords. |
 
    - Click **Keys**, then add a new key:
 
@@ -319,7 +336,7 @@ For more information, see [Build a multi-tenant SaaS web application using Azure
 
 ### Office 365 Education API
 
-The [Office 365 Education APIs](https://msdn.microsoft.com/office/office365/api/school-rest-operations) return data from any Office 365 tenant which has been synced to the cloud by Microsoft School Data Sync. The APIs provide information about schools, sections, teachers, students, and rosters. The Schools REST API provides access to school entities in Office 365 for Education tenants.
+The [Office 365 Education APIs](https://msdn.microsoft.com/office/office365/api/school-rest-operations) return data from any Office 365 tenant which has been synced to the cloud by Microsoft School Data Sync. The APIs provide information about schools, classes, teachers, students, and rosters. The Schools REST API provides access to school entities in Office 365 for Education tenants.
 
 In this sample, the **Microsoft.Education** Class Library project encapsulates the Office 365 Education API. 
 
@@ -329,43 +346,58 @@ The **EducationServiceClient** is the core class of the library. It is used to e
 
 ~~~typescript
 def get_schools(self):
-    url = self.api_base_uri + 'administrativeUnits'
+    url = self.api_base_uri + 'education/schools'
     return self.rest_api_service.get_object_list(url, self.access_token, model=School)
 ~~~
 
 ~~~typescript
 def get_school(self, object_id):
-    url = self.api_base_uri + 'administrativeUnits/%s' % object_id
+    url = self.api_base_uri + 'education/schools/%s' % school_id
     return self.rest_api_service.get_object(url, self.access_token, model=School)
 ~~~
 
 **Get classes**
 
 ~~~typescript
-def get_sections(self, school_id, top=12, nextlink=''):
+def get_classes(self, school_id, top=12, nextlink=''):
     skiptoken = self._get_skip_token(nextlink)
-    url = self.api_base_uri + "groups?$filter=extension_fe2174665583431c953114ff7268b7b3_Education_ObjectType eq 'Section' and extension_fe2174665583431c953114ff7268b7b3_Education_SyncSource_SchoolId eq '%s'&$top=%s%s" % (school_id, top, skiptoken)
+    url = self.api_base_uri + "education/schools/%s/classes?$expand=schools&$top=%s&skiptoken=%s" % (school_id, top, skiptoken)
     return self.rest_api_service.get_object_list(url, self.access_token, model=Section, next_key='odata.nextLink')
 ~~~
 
 ```typescript
-def get_section(self, object_id):
-    url = self.api_base_uri + 'groups/%s' % object_id
-    return self.rest_api_service.get_object(url, self.access_token, model=Section)
+  def get_class(self, class_id):
+        '''
+        Get a section by using the object_id.
+        <param name="object_id">The Object ID of the section.</param>
+        '''
+        url = self.api_base_uri + "education/classes/%s" % class_id
+        return self.rest_api_service.get_object(url, self.access_token, model=Class)
 ```
-**Get users**
+**Manage Assignments**
 
-```typescript
-def get_members(self, object_id, top=12, nextlink=''):
-    skiptoken = self._get_skip_token(nextlink)
-    url = self.api_base_uri + 'administrativeUnits/%s/members?$top=%s%s' % (object_id, top, skiptoken)
-    return self.rest_api_service.get_object_list(url, self.access_token, model=EduUser, next_key='odata.nextLink')
+        def get_assignments(self,class_id):
+            '''
+            Get assignments of a class.
+            '''
+            url = self.api_base_uri + 'education/classes/' +class_id + "/assignments"     
+            return self.rest_api_service.get_object_list(url, self.access_token, model=Assignment)
 ```
+    def add_assignment(self,class_id,name,dueDateTime):
+        url = self.api_base_uri + 'education/classes/' +class_id + "/assignments"       
+        data={"displayName":name,"status":"draft","dueDateTime":dueDateTime,"allowStudentsToAddResourcesToSubmission":"true","assignTo":{"@odata.type":"#microsoft.graph.educationAssignmentClassRecipient"}}
+        return self.rest_api_service.post_json(url,self.access_token,None,data)
+```
+
+```
+    def get_Assignment_Resources(self,class_id,assignment_id):
+        url = self.api_base_uri + "education/classes/"+class_id+"/assignments/"+assignment_id+"/resources";
+        return self.rest_api_service.get_object_list(url, self.access_token, model=AssignmentResource)
+```
+
 Below are some screenshots of the sample app that show the education data.
 
 ![](Images/edu-schools.png)
-
-![](Images/edu-users.png)
 
 ![](Images/edu-classes.png)
 
@@ -389,7 +421,7 @@ The first 2 flows (Local Login/O365 Login) enable users to login in with either 
 
 This flow shows how an administrator logs into the system and performs administrative operations.
 
-After logging into the app with an Office 365 account,the administrator will be asked to link to a local account. This step is not required and can be skipped. 
+After logging into the app with an Office 365 account, the administrator will be asked to link to a local account. This step is not required and can be skipped. 
 
 As mentioned earlier, the web app is a multi-tenant app which uses some application permissions, so tenant administrator must consent the app first.  
 
