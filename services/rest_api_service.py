@@ -90,7 +90,13 @@ class RestApiService(object):
         self._set_header_token(s_headers, token)
         if headers:
             s_headers.update(headers)
-        response = self._send(method, url, s_headers, json.dumps(data))
+        return self._send(method, url, s_headers, json.dumps(data))
+
+    def put_file(self, url, token, file=None):      
+        s_headers = {'Content-Type': 'application/octet-stream'}        
+        self._set_header_token(s_headers, token)
+        method = 'PUT'
+        return json.loads(self._send(method, url, s_headers,file.chunks()).text)
 
     def _set_header_token(self, headers, token):
         key = 'Authorization'
@@ -105,3 +111,4 @@ class RestApiService(object):
         if response.status_code < 200 or response.status_code > 299:
             raise HttpRequestFailed(request, response)
         return response
+ 

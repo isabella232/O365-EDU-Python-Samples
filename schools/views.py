@@ -14,7 +14,10 @@ from services.auth_service import AuthService
 from services.ms_graph_service import MSGraphService
 from services.education_service import EducationService
 from services.user_service import UserService
- 
+from datetime import datetime
+import time
+from django import forms
+
 
 user_service = UserService()
 token_service = TokenService()
@@ -26,100 +29,137 @@ def schools(request):
     token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
 
     education_service = EducationService(user.tenant_id, token)
-    my_school_id = education_service.get_my_school_id()
-    school_user_id = education_service.get_school_user_id()
+    me = education_service.get_me()
+
     schools = education_service.get_schools()
+    for school in schools:
+        school.custom_data['is_my'] = me.is_in_school(school.id)
+
     # sort schools: my school will be put to the top
-    schools.sort(key=lambda d:d.name if d.id == my_school_id else 'Z_' + d.name)
-  
- 
+    schools.sort(key=lambda s:s.display_name if me.is_in_school(s.id) else 'Z_' + s.display_name)
+    role = get_user_role(user, me)
     context = {
         'user': user,
-        'my_school_id': my_school_id,
-        'schools': schools,
-        'school_user_id': school_user_id
+        'me': me,
+        'role':role,
+        'schools': schools
     }
     return render(request, 'schools/index.html', context)
 
 @login_required
 @linked_users_only
-def classes(request, school_object_id):
+def classes(request, school_id):
     user = AuthService.get_current_user(request)
     token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
-
     education_service = EducationService(user.tenant_id, token)
-    school = education_service.get_school(school_object_id)
-    my_sections = education_service.get_my_sections(school.school_id)
-    all_sections, sectionsnextlink = education_service.get_sections(school.school_id)
+    me = education_service.get_me()
+    role = get_user_role(user, me)
+    education_service = EducationService(user.tenant_id, token)
+    school = education_service.get_school(school_id)
+    my_classes = education_service.get_my_classes(school_id)
+    all_classes, classesnextlink = education_service.get_classes(school_id, 12)
 
-    my_section_ids = []
-    for section in my_sections:
-        my_section_ids.append(section.id)
-    for section in all_sections:
-        section.custom_data['is_my'] = section.id in my_section_ids
+    for c in all_classes:
+        my_class = next((mc for mc in my_classes if c.id == mc.id), None)
+        c.custom_data['is_my'] = my_class != None
+        if my_class != None:
+            c.members = my_class.members
 
     context = {
         'user': user,
         'school': school,
-        'sectionsnextlink': sectionsnextlink,
-        'sections': all_sections,
-        'mysections': my_sections,
-        'school_object_id': school_object_id,
-        'is_in_a_school': True
+        'classesnextlink': classesnextlink,
+        'classes': all_classes,
+        'myclasses': my_classes,
+        'school_id': school_id,
+        'is_in_a_school': True,
+        'me': me,
+        'role':role
     }
     return render(request, 'schools/classes.html', context)
 
 @login_required
-def classes_next(request, school_object_id):
+def classes_next(request, school_id):
     nextlink = request.GET.get('nextLink')
     user = AuthService.get_current_user(request)
     token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
 
     education_service = EducationService(user.tenant_id, token)
-    school = education_service.get_school(school_object_id)
-    my_sections = education_service.get_my_sections(school.id)
-    all_sections, sectionsnextlink = education_service.get_sections(school.school_id, nextlink=nextlink)
+    #school = education_service.get_school(school_id)
+    my_classes = education_service.get_my_classes(school_id)
+    all_classes, classnextlink = education_service.get_classes(school_id, top=12, nextlink=nextlink)
 
-    my_section_ids = []
-    for section in my_sections:
-        my_section_ids.append(section.id)
-    for section in all_sections:
-        section.custom_data['is_my'] = section.id in my_section_ids
+    for c in all_classes:
+        my_class = next((mc for mc in my_classes if c.id == mc.id), None)
+        c.custom_data['is_my'] = my_class != None
+        if my_class != None:
+            c.members = my_class.members
 
-    my_section_list = [m.to_dict() for m in my_sections]
-    for my_section in my_section_list:
-        my_section['members'] = [member.to_dict() for member in my_section['members']]
-        my_section['teachers'] = [teacher.to_dict() for teacher in my_section['teachers']]
+    # my_section_list = [m.to_dict() for m in my_classes]
 
     ajax_result = {}
-    ajax_result['Sections'] = {}
-    ajax_result['Sections']['Value'] = [s.to_dict() for s in all_sections]
-    ajax_result['Sections']['NextLink'] = sectionsnextlink
-    ajax_result['MySections'] = my_section_list
+    ajax_result['classes'] = {}
+    ajax_result['classes']['value'] = [{
+          'id': c.id,
+          'is_my': c.custom_data['is_my'],
+          'display_name': c.display_name,
+          'code': c.code,
+          'teachers': [{ 'display_name': t.display_name } for t in c.teachers],
+          'term_name': c.term.display_name,
+          'term_start_time': c.term.start_date,
+          'term_end_time': c.term.end_date } for c in all_classes]
+    ajax_result['classes']['next_link'] = classnextlink
+    # ajax_result['MyClasss'] = my_section_list
+
     return JsonResponse(ajax_result, safe=False)
 
 @login_required
 @linked_users_only
-def class_details(request, school_object_id, class_object_id):
+def add_coteacher(request, class_id, user_object_id):    
+    previousURL = request.META.get('HTTP_REFERER')    
     user = AuthService.get_current_user(request)
     token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
     education_service = EducationService(user.tenant_id, token)
+    education_service.add_member(class_id,user_object_id)
+    education_service.add_owner(class_id,user_object_id)
+    return HttpResponseRedirect(previousURL)
 
-    school = education_service.get_school(school_object_id)
-    section = education_service.get_section(class_object_id)    
-    members = education_service.get_section_members(class_object_id)
-    teachers = [m for m in members if m.education_object_type == 'Teacher']
-    students = [m for m in members if m.education_object_type == 'Student'] 
+@login_required
+@linked_users_only
+def class_details(request, school_id, class_id):
+    user = AuthService.get_current_user(request)
+    token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+    education_service = EducationService(user.tenant_id, token)
+    me = education_service.get_me()
+    role = get_user_role(user, me)
+    token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+    education_service = EducationService(user.tenant_id, token)
 
+    school = education_service.get_school(school_id)
+    current_class = education_service.get_class(class_id)    
+    members = education_service.get_class_members(class_id)
+    teachers = [m for m in members if m.primary_role == 'teacher']
+    students = [m for m in members if m.primary_role == 'student']    
+    
     # set favorite colors and seating positions
     for student in students:
         favorite_color = user_service.get_favorite_color_by_o365_user_id(student.id)
         if favorite_color:
             student.custom_data['favorite_color'] = favorite_color
-        seating_position = get_seating_position = user_service.get_seating_position(student.id, class_object_id)
+        seating_position = user_service.get_seating_position(student.id, class_id)
         if not seating_position:
             seating_position = 0
         student.custom_data['position'] = seating_position
+   
+    assignments = education_service.get_assignments(class_id)
+    for assignment in assignments: 
+        if assignment.dueDateTime !=None:      
+            assignment.dueDateTimeLocal = datetime_from_utc_to_local(datetime.strptime(assignment.dueDateTime, '%Y-%m-%dT%H:%M:%SZ')).strftime("%m/%d/%Y")
+
+
+
+    all_teachers = education_service.get_teachers(school.number)
+    filtered_teachers = [t for t in all_teachers if all(t.id != i.id for i in teachers)]
 
     # set seatrange
     seatrange = range(1, 37)
@@ -127,19 +167,22 @@ def class_details(request, school_object_id, class_object_id):
     ms_token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
     ms_graph_service = MSGraphService(ms_token)
 
-    documents = ms_graph_service.get_documents(class_object_id)
-    documents_root = ms_graph_service.get_documents_root(class_object_id)
-    conversations = ms_graph_service.get_conversations(class_object_id)
+    documents = ms_graph_service.get_documents(class_id)
+    documents_root = ms_graph_service.get_documents_root(class_id)
+    conversations = ms_graph_service.get_conversations(class_id)
     for conversation in conversations:
-        conversation.custom_data['url'] = ms_graph_service.get_conversations_url(conversation.id, section.email)
-    conversations_root = ms_graph_service.get_conversations_root(section.email)
+        conversation.custom_data['url'] = ms_graph_service.get_conversations_url(conversation.id, current_class.mail_nickname)
+    conversations_root = ms_graph_service.get_conversations_root(current_class.mail_nickname)
 
     favorite_color = user_service.get_favorite_color_by_o365_user_id(user.o365_user_id)
 
     context = {
         'user': user,
+        'me': me,
+        'role':role,
+        'is_student':me.is_student,
         'school': school,
-        'section': section,
+        'class': current_class,
         'teachers': teachers,
         'students': students,
         'documents': documents,
@@ -147,10 +190,12 @@ def class_details(request, school_object_id, class_object_id):
         'conversations': conversations,
         'conversations_root': conversations_root,
         'seatrange': seatrange,
-        'school_object_id': school_object_id,
-        'class_object_id': class_object_id,
+        'school_id': school_id,
+        'class_id': class_id,
         'is_in_a_school': True,
-        'favorite_color': favorite_color
+        'favorite_color': favorite_color,
+        'filtered_teachers': filtered_teachers,
+        'assignments' : assignments
     }
     return render(request, 'schools/classdetails.html', context)
 
@@ -162,71 +207,184 @@ def save_seating_arrangements(request):
     return HttpResponse(json.dumps({'save':'ok'}))
 
 @login_required
-@linked_users_only
-def users(request, school_object_id):
-    user = AuthService.get_current_user(request)
-    token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+def new_assignment(request):
+    if request.method == 'POST':        
+        post=request.POST        
+        user = AuthService.get_current_user(request)
+        token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+        education_service = EducationService(user.tenant_id, token)
+        dueDate = post["duedate"] + "T" + post["duetime"] + "Z"       
+        dueDateUTC=datetime.strptime(dueDate,"%m/%d/%YT%H:%M %pZ").strftime("%Y-%m-%dT%H:%M:%SZ")
+        result = education_service.add_assignment(post["classId"],post["name"],dueDateUTC)        
+        jsonContent = result.content.decode('utf8')
+        assignment = json.loads(jsonContent)
+        if post['status']=="assigned":
+           education_service.publish_assignment(post["classId"],assignment["id"])
 
-    education_service = EducationService(user.tenant_id, token)
-    school = education_service.get_school(school_object_id)
-    users, usersnextlink = education_service.get_members(school_object_id)
-    teachers, teachersnextlink = education_service.get_teachers(school.school_id)
-    students, studentsnextlink = education_service.get_students(school.school_id)
 
-    context = {
-        'user': user,
-        'school': school,
-        'users': users,
-        'teachers': teachers,
-        'students': students,
-        'usersnextlink': usersnextlink,
-        'studentsnextlink': studentsnextlink,
-        'teachersnextlink': teachersnextlink,
-        'school_object_id': school_object_id,
-        'is_in_a_school': True
-    }
-    return render(request, 'schools/users.html', context)
-
-@login_required
-def users_next(request, school_object_id):
-    nextlink = request.GET.get('nextLink')
-    user = AuthService.get_current_user(request)
-    token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
-    education_service = EducationService(user.tenant_id, token)
-    users, usersnextlink = education_service.get_members(school_object_id, nextlink=nextlink)
-
-    ajax_result = {}
-    ajax_result['Users'] = {}
-    ajax_result['Users']['Value'] = [u.to_dict() for u in users]
-    ajax_result['Users']['NextLink'] = usersnextlink
-    return JsonResponse(ajax_result, safe=False)
+        files= request.FILES.getlist("fileUpload")
+        if files !=None:
+            resourceFolderURL = education_service.get_Assignment_Resource_Folder_URL(post["classId"],assignment["id"])["value"]
+            ids = getIds(resourceFolderURL)
+            
+            for file in files:
+               driveFile = uploadFileToOneDrive(resourceFolderURL,file,education_service)      
+               resourceUrl = "https://graph.microsoft.com/v1.0/drives/" + ids[0] + "/items/" + driveFile["id"]
+               education_service.add_assignment_resources(post["classId"],assignment["id"],driveFile["name"],resourceUrl)
+    
+        
+        referer = request.META.get('HTTP_REFERER') 
+        if referer.find("?")==-1:
+            referer +="?tab=assignments"
+        return HttpResponseRedirect(referer)
 
 @login_required
-def students_next(request, school_object_id):
-    nextlink = request.GET.get('nextLink')
+def get_assignment_resources(request,class_id,assignment_id):
     user = AuthService.get_current_user(request)
     token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
     education_service = EducationService(user.tenant_id, token)
-    school = education_service.get_school(school_object_id)
-    students, studentsnextlink = education_service.get_students(school.school_id, nextlink=nextlink)
-    #import pdb;pdb.set_trace()
-    ajax_result = {}
-    ajax_result['Students'] = {}
-    ajax_result['Students']['Value'] = [s.to_dict() for s in students]
-    ajax_result['Students']['NextLink'] = studentsnextlink
-    return JsonResponse(ajax_result, safe=False)
+    resources = education_service.get_Assignment_Resources(class_id,assignment_id)   
+    result=[]
+    for resource in resources:
+        resourceArray={} 
+        resourceArray["id"]=resource.id
+        resourceArray["resource"]=resource.resource["displayName"]
+        result.append(resourceArray)
+
+    return JsonResponse(result, safe=False)
 
 @login_required
-def teachers_next(request, school_object_id):
-    nextlink = request.GET.get('nextLink')
+def get_assignment_submission_resources(request,class_id,assignment_id):
     user = AuthService.get_current_user(request)
     token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
     education_service = EducationService(user.tenant_id, token)
-    school = education_service.get_school(school_object_id)
-    teachers, teachersnextlink = education_service.get_students(school.school_id, nextlink=nextlink)
+    assignemtnResources = education_service.get_Assignment_Resources(class_id,assignment_id)
+    submissionResources = education_service.get_Assignment_Submissions_By_User(class_id,assignment_id,user.o365_user_id)
+    
+    result={}
+    resourceArray=[] 
+    submissionResourcesArray=[]
+    for resource in assignemtnResources:
+        obj={}
+        obj["id"]=resource.id
+        obj["resource"]=resource.resource["displayName"]
+        resourceArray.append(obj)
+    result["resources"]=resourceArray;
+    
+    result["submissionId"]=submissionResources[0].id
+    for resource in submissionResources:
+       for item in resource.resources:
+           obj={}
+           obj["id"]=item["id"]
+           obj["resource"]=item["resource"]["displayName"]
+           submissionResourcesArray.append(obj)
+    result["submissionResources"]=submissionResourcesArray;
+           
+    return JsonResponse(result, safe=False)
 
-    ajax_result = {}
-    ajax_result['Teachers'] = {}
-    ajax_result['Teachers']['Value'] = [t.to_dict() for t in teachers]
-    ajax_result['Teachers']['NextLink'] = teachersnextlink
-    return JsonResponse(ajax_result, safe=False)
+@login_required
+def get_submissions(request,class_id,assignment_id):
+    user = AuthService.get_current_user(request)
+    token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+    education_service = EducationService(user.tenant_id, token)  
+    submissions = education_service.get_Submissions(class_id,assignment_id)   
+    ms_graph_service = MSGraphService(token)
+
+    result=[]
+    for submission in submissions:
+        userId =  submission.submittedBy["user"]["id"];
+        user = ms_graph_service.get_user_info(userId)                
+        resources= education_service.get_Submission_Resources(class_id,assignment_id,submission.id)
+        array={}
+        array["displayName"]=user["displayName"]
+        array["submittedDateTime"]  = submission.submittedDateTime 
+        
+        resources_array=[]
+        for resource in resources:
+            resources_dict={}
+            resources_dict["displayName"] = resource.resource["displayName"]
+            resources_array.append(resources_dict)
+        array["resources"]=  resources_array  
+        result.append(array)
+
+    return JsonResponse(result, safe=False)
+        
+
+@login_required
+def update_assignment(request):
+   if request.method == 'POST':
+  
+        post=request.POST
+        files=request.FILES
+        user = AuthService.get_current_user(request)
+        token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+        education_service = EducationService(user.tenant_id, token)  
+        assignment = education_service.get_assignment(post["classId"],post["assignmentId"])  
+
+        if assignment.status=='draft' and post['assignmentStatus']=='assigned':
+            education_service.publish_assignment(post['classId'], post['assignmentId'])
+        
+       
+        files= request.FILES.getlist("newResource")
+
+        if files !=None:
+            resourceFolderURL = education_service.get_Assignment_Resource_Folder_URL(post["classId"],post["assignmentId"])["value"]
+            ids = getIds(resourceFolderURL)
+            for file in files:
+               driveFile = uploadFileToOneDrive(resourceFolderURL,file,education_service)      
+               resourceUrl = "https://graph.microsoft.com/v1.0/drives/" + ids[0] + "/items/" + driveFile["id"]
+               education_service.add_assignment_resources(post["classId"],post["assignmentId"],driveFile["name"],resourceUrl)
+    
+        referer = request.META.get('HTTP_REFERER') 
+        if referer.find("?")==-1:
+            referer +="?tab=assignments"
+        return HttpResponseRedirect(referer)
+
+@login_required
+def newAssignmentSubmissionResource(request):
+    if request.method == 'POST':
+        files= request.FILES.getlist("newResource")
+        if len(files)!=0:
+            post=request.POST            
+            user = AuthService.get_current_user(request)
+            token = token_service.get_access_token(constant.Resources.MSGraph, user.o365_user_id)
+            education_service = EducationService(user.tenant_id, token)  
+            submissions = education_service.get_Assignment_Submissions_By_User(post["classId"],post["assignmentId"],user.o365_user_id)  
+            if len(submissions)!=0:
+                resourceFolderURL = submissions[0].resourcesFolderUrl
+                ids = getIds(resourceFolderURL)
+                for file in files:
+                    driveFile = uploadFileToOneDrive(resourceFolderURL,file,education_service)      
+                    resourceUrl = "https://graph.microsoft.com/v1.0/drives/" + ids[0] + "/items/" + driveFile["id"]
+                    education_service.add_Submission_Resource(post["classId"],post["assignmentId"],driveFile["name"],resourceUrl,post["submissionId"])
+    
+        referer = request.META.get('HTTP_REFERER') 
+        if referer.find("?")==-1:
+            referer +="?tab=assignments"
+        return HttpResponseRedirect(referer)
+
+def uploadFileToOneDrive(resourceFolderURL,file,education_service):    
+    ids = getIds(resourceFolderURL)
+    return education_service.uploadFileToOneDrive(ids,file)
+
+
+def getIds(resourceFolderURL):
+    array = resourceFolderURL.split("/")
+    length = len(array)
+    return [array[length-3],array[length-1]]
+
+def datetime_from_utc_to_local(utc_datetime):
+    now_timestamp = time.time()
+    offset = datetime.fromtimestamp(now_timestamp) - datetime.utcfromtimestamp(now_timestamp)
+    return utc_datetime + offset
+ 
+def get_user_role(user,me):
+      login_as =""
+      if user.is_admin:
+            login_as ="Admin"
+      if me:
+        if me.is_teacher:
+            login_as="Teacher"
+        if me.is_student:
+            login_as="Student"
+      return  login_as

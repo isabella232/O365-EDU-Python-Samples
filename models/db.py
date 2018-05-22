@@ -18,10 +18,13 @@ class Organization(models.Model):
         db_table = 'organizations'
 
 class Profile(models.Model):
-    user = models.OneToOneField(User)
+    user = models.OneToOneField(User, on_delete=None)
     o365UserId = models.CharField(null=True, max_length=255)
     o365Email = models.CharField(null=True, max_length=255)
     favoriteColor = models.CharField(null=True, max_length=255)
+    jobTitle = models.CharField(null=True, max_length=255)
+    department = models.CharField(null=True, max_length=255)
+    mobilePhone = models.CharField(null=True, max_length=255)
     organization = models.ForeignKey(Organization, models.SET_NULL, null=True)
     class Meta:
         db_table = 'profiles'
@@ -57,3 +60,12 @@ class ClassroomSeatingArrangement(models.Model):
     classId = models.CharField(null=True, max_length=255)
     class Meta:
         db_table = 'classroom_seating_arranements'
+
+class DataSyncRecord(models.Model):
+    id = models.AutoField(primary_key=True)
+    tenantId = models.CharField(null=True, max_length=255)
+    query = models.TextField(null=True)
+    deltaLink = models.TextField(null=True)
+    updated = models.DateTimeField(null=True)
+    class Meta:
+        db_table = 'data_sync_records'

@@ -106,6 +106,10 @@ IF EXIST "%DEPLOYMENT_TARGET%\requirements.txt" (
   IF !ERRORLEVEL! NEQ 0 goto error
 )
 
+echo Migrate database.
+%PYTHON_EXE% manage.py migrate
+IF !ERRORLEVEL! NEQ 0 goto error
+
 REM Add additional package installation here
 REM -- Example --
 REM env\scripts\easy_install pytz
@@ -125,6 +129,9 @@ IF EXIST "%DEPLOYMENT_SOURCE%\web.%PYTHON_VER%.config" (
 ::  )
 ::  %PYTHON_EXE% manage.py collectstatic --noinput --clear
 ::)
+
+:: 6. Deploy WebJobs
+xcopy /y/s "%DEPLOYMENT_SOURCE%\webjobs" "%DEPLOYMENT_TARGET%\App_Data\jobs\triggered\"
 
 popd
 

@@ -8,6 +8,7 @@ School data is kept in sync in O365 Education tenants by [Microsoft School Data 
 
 - [Sample Goals](#sample-goals)
 - [Prerequisites](#prerequisites)
+- [Generate a self-signed certificate](#generate-a-self-signed-certificate)
 - [Register the application in Azure Active Directory](#register-the-application-in-azure-active-directory)
 - [Run the sample locally](#run-the-sample-locally)
 - [Deploy the sample to Azure](#deploy-the-sample-to-azure)
@@ -28,9 +29,10 @@ The sample demonstrates:
 
   After linking accounts, users can use either local or Office 365 accounts to log into the sample website and use it.
 
-- Getting schools, sections, teachers, and students from Office 365 Education:
+- Getting schools, classes, teachers, and students from Office 365 Education:
 
   - [Office 365 Schools REST API reference](https://msdn.microsoft.com/office/office365/api/school-rest-operations)
+  - A [Differential Query](https://msdn.microsoft.com/en-us/library/azure/ad/graph/howto/azure-ad-graph-api-differential-query) is used to sync data that is cached in a local database by the SyncData Web Job.
 
 This sample is implemented with the Python language and [Django](https://www.djangoproject.com/) web framework.
 
@@ -50,9 +52,56 @@ This sample is implemented with the Python language and [Django](https://www.dja
 
   - [Python](https://www.python.org/downloads/) 3.5.2 or above
   - [Django](https://www.djangoproject.com/download/) 1.11 or above
-  - [SQLite](https://www.sqlite.org/)
+  - [MySQL](https://www.mysql.com)
 
+## Generate a self-signed certificate
 
+A self-signed certificate is required by the SyncData WebJob. For preview, you may skip the steps below and use the default certificate we provided:
+
+* Certificate file: `/webjobs/sync_data/app_only_cert.pfx`
+* Password: `J48W23RQeZv85vj`
+* Key credential: `/webjobs/sync_data/key_credential.txt`
+
+For production, you should you own certifcate:
+
+1. Generate a certificate with PowerShell
+
+   Run PowerShell **as administrator**, then execute the commands below:
+
+   ```
+   $cert = New-SelfSignedCertificate -Type Custom -KeyExportPolicy Exportable -KeySpec Signature -Subject "CN=Edu App-only Cert" -NotAfter (Get-Date).AddYears(20) -CertStoreLocation "cert:\CurrentUser\My" -KeyLength 2048
+   ```
+
+   > Note: please keep the PowerShell window open until you finish the steps below.
+
+2. Get keyCredential
+
+   Execute the commands below to get keyCredential:
+
+   > Note: Feel free to change the file path at the end of the command.
+
+   ```
+   $keyCredential = @{}
+   $keyCredential.customKeyIdentifier = [System.Convert]::ToBase64String($cert.GetCertHash())
+   $keyCredential.keyId = [System.Guid]::NewGuid().ToString()
+   $keyCredential.type = "AsymmetricX509Cert"
+   $keyCredential.usage = "Verify"
+   $keyCredential.value = [System.Convert]::ToBase64String($cert.GetRawCertData())
+   $keyCredential | ConvertTo-Json > c:\keyCredential.txt
+   ```
+
+   The keyCredential is in the generated file, and will be used to create App Registrations in AAD.
+
+   ![](Images/cert-key-credential.png)
+
+3. Export the certificate
+
+   ```
+   $password = Read-Host -Prompt "Enter password" -AsSecureString
+   Export-PfxCertificate -Cert $cert -Password $password -FilePath c:\app_only_cert.pfx
+   ```
+
+   It will promote you to input a password. Keep the password and the exported certificate.
 
 ## Register the application in Azure Active Directory
 
@@ -68,36 +117,30 @@ This sample is implemented with the Python language and [Django](https://www.dja
 
 4. Input a **Name**, and select **Web app / API** as **Application Type**.
 
-   Input **Sign-on URL**: http://127.0.0.1:8000/
+   Input **Sign-on URL**: `http://127.0.0.1:8000/*`
 
    ![](Images/aad-create-app-02.png)
 
    Click **Create**.
 
-5. Once completed, the app will show in the list.
+   ![](Images/aad-create-app-04.png)
 
-   ![](/Images/aad-create-app-03.png)
-
-6. Click it to view its details. 
-
-   ![](/Images/aad-create-app-04.png)
-
-7. Click **All settings**, if the setting window did not show.
+5. Click **Settings**.
 
    - Click **Properties**, then set **Multi-tenanted** to **Yes**.
 
-     ![](/Images/aad-create-app-05.png)
+     ![](Images/aad-create-app-05.png)
 
      Copy aside **Application ID**, then Click **Save**.
 
    - Click **Required permissions**. Add the following permissions:
 
-     | API                            | Application Permissions | Delegated Permissions                    |
-     | ------------------------------ | ----------------------- | ---------------------------------------- |
-     | Microsoft Graph                | Read directory data     | Read all users' full profiles<br>Read directory data<br>Read directory data<br>Access directory as the signed in user<br>Sign users in |
-     | Windows Azure Active Directory |                         | Sign in and read user profile<br>Read and write directory data |
+     | API                            | Application Permissions       | Delegated Permissions                                        |
+     | ------------------------------ | ----------------------------- | ------------------------------------------------------------ |
+     | Microsoft Graph                | Read all users' full profiles | Read directory data<br>Access directory as the signed in user<br>Sign users in<br> Have full access to all files user can access<br> Have full access to user files<br> Read and write users' class assignments and their grades<br>Read users' view of the roster<br>Read all groups |
+     | Windows Azure Active Directory |                               | Sign in and read user profile<br>Read and write directory data |
 
-     ![](/Images/aad-create-app-06.png)
+     ![](Images/aad-create-app-06.png)
 
    - Click **Keys**, then add a new key:
 
@@ -105,7 +148,22 @@ This sample is implemented with the Python language and [Django](https://www.dja
 
      Click **Save**, then copy aside the **VALUE** of the key. 
 
+
    Close the Settings window.
+
+6. Add keyCredential
+
+   * Click **Manifest**.
+
+     ![](Images/aad-create-app-10.png)
+
+   * Copy the keyCredential (all the text) from `key_credential.txt` file.
+
+   * Insert the keyCredential into the square brackets of the **keyCredentials** node.
+
+     ![](Images/aad-create-app-11.png)
+
+   * Click **Save**.
 
 ## Run the sample locally
 
@@ -113,24 +171,57 @@ The following softwares are required:
 
 - [Python](https://www.python.org/downloads/) 3.5.2 or above
 - [Django](https://www.djangoproject.com/download/) 1.11 or above
-- [SQLite](https://www.sqlite.org/)
+- [MySQL](https://www.mysql.com)
 
-Run the app:
+### Preparation
 
-1. Configure the following **environment variables**:
+1. Download the source code.
 
-   - **clientId**: use the Client Id of the app registration you created earlier.
-   - **clientSecret**: use the Key value of the app registration you created earlier.
-   - **SourceCodeRepositoryURL**: use the URL of this repository.
+2. Replace `/webjobs/sync_data/app_only_cert.pfx` with your certificate if you plan to use yours.
 
-2. Open terminal and navigate to the source code folder. Execute the command below:
+3. Start your local MySQL and create a new database **edu**:
+
+   ```mysql
+   CREATE SCHEMA `edu` ;
+   ```
+
+4. Configure the following **environment variables**:
+
+   - **ClientId**: the Client Id of the app registration you created earlier.
+
+   - **ClientSecret**: the Key value of the app registration you created earlier.
+
+   - **ClientCertificatePath**: the path of the certificate. Please use the default value: `app_only_cert.pfx`
+
+   - **ClientCertificatePassword**: the password of the certifcate.
+
+     > Note: the **ClientCertificatePath** and **ClientCertificatePassword** variables are only required by the WebJob.
+
+   - **SourceCodeRepositoryUrl**: the URL of this repository.
+
+   - **MySQLHost**/**MySQLPort**: the host and port of the MySQL server.
+
+   - **MySQLUser**/**MySQLPassword**: the user and password of the MySQL server.
+
+### Run the web app
+
+1. Open the terminal and navigate to the source code folder. Execute the command below:
 
    ```sh
    pip install -r requirements.txt
+   python manage.py migrate
    python manage.py runserver
    ```
 
-3. Open http://127.0.0.1:8000/ in a browser.
+2. Open http://127.0.0.1:8000/ in a browser.
+
+### Run the WebJob
+
+1. Open terminal and navigate to `/webjobs/sync_data` folder. Execute the command below:
+
+   ```Sh
+   python start.py
+   ```
 
 ## Deploy the sample to Azure
 
@@ -170,11 +261,13 @@ Run the app:
 
 2. Fork this repository to your GitHub account.
 
-3. Click the Deploy to Azure Button:
+3. Replace `/webjobs/sync_data/app_only_cert.pfx` with your certificate if you plan to use yours.
+
+4. Click the **Deploy to Azure** Button:
 
    [![Deploy to Azure](http://azuredeploy.net/deploybutton.png)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FOfficeDev%2FO365-EDU-Python-Samples%2Fmaster%2Fazuredeploy.json)
 
-4. Fill in the values in the deployment page and select the **I agree to the terms and conditions stated above** checkbox.
+5. Fill in the values in the deployment page and select the **I agree to the terms and conditions stated above** checkbox.
 
    ![](Images/azure-auto-deploy.png)
 
@@ -190,6 +283,10 @@ Run the app:
      >
      > In this case, please use another name.
 
+   - **My Sql Administrator Login**: The administrator login of the MySQL.
+
+   - **My Sql Administrator Login Password**: The administrator login password of the MySQL.
+
    - **Source Code Repository URL**: replace <YOUR REPOSITORY> with the repository name of your fork.
 
    - **Source Code Manual Integration**: choose **false**, since you are deploying from your own fork.
@@ -198,9 +295,13 @@ Run the app:
 
    - **Client Secret**: use the Key value of the app registration you created earlier.
 
+   - **Client Certificate Path**: keep the default value `app_only_cert.pfx`.
+
+   - **Client Certificate Password**: password of the certificate. 
+
    - Check **I agree to the terms and conditions stated above**.
 
-5. Click **Purchase**.
+6. Click **Purchase**.
 
 **Add REPLY URL to the app registration**
 
@@ -212,7 +313,7 @@ Run the app:
 
    ![](Images/azure-web-app.png)
 
-   Copy the URL aside and change the schema to **https**. This is the replay URL and will be used in next step.
+   Copy the URL aside, then append `/*` . We get a new reply URL `https://edugraphapi.azurewebsites.net/*`.
 
 3. Navigate to the app registration in the new Azure portal, then open the setting windows.
 
@@ -220,9 +321,7 @@ Run the app:
 
    ![](Images/aad-add-reply-url.png)
 
-   > Note: to debug the sample locally, make sure that http://127.0.0.1:8000/ is in the reply URLs.
-
-4. Click **SAVE**.
+   Click **SAVE**.
 
 ## Understand the code
 
@@ -248,18 +347,19 @@ O365 users authentication is implemented with Open ID Connect.
 
 **Data Access**
 
-In this sample, [Django's built-in ORM](https://docs.djangoproject.com/en/1.11/topics/db/) is used to access data from the backend SQLite database.
+In this sample, [Django's built-in ORM](https://docs.djangoproject.com/en/1.11/topics/db/) is used to access data from the backend MySQL database.
 
 Below are the tables:
 
-| Table                          | Description                              |
-| ------------------------------ | ---------------------------------------- |
+| Table                          | Description                                                  |
+| ------------------------------ | ------------------------------------------------------------ |
 | auth_user                      | Django built-in user table which contains users' authentication information: username, email, password... |
 | user_roles                     | Contains users' roles. Three roles are used in this sample: admin, teacher, and student. |
-| profiles                       | Contains users' extra information: *favoriteColor*, *organization_id*,  *o365UserId*, and *o365Email*. The later two are used to connect the local user with an O365 user. |
+| profiles                       | Contains users' extra information: *favoriteColor*, *organization_id*,  *o365UserId*, and *o365Email*. The latter two are used to connect the local user with an O365 user. |
 | organizations                  | A row in this table represents a tenant in AAD.<br>*isAdminConsented* column records if the tenant consented by an administrator. |
-| token_cache                    | Contains the users' access/refresh tokens. |
-| classroom_seating_arrangements | Contains the classroom seating arrangements data. |
+| token_cache                    | Contains the users' access/refresh tokens.                   |
+| classroom_seating_arrangements | Contains the classroom seating arrangements data.            |
+| data_sync_records              | Stores data sync records like the delta link.                |
 
 Models are defined in **/models/db.py**.
 
@@ -317,9 +417,15 @@ Users from any Azure Active Directory tenant can access this app. Some permissio
 
 For more information, see [Build a multi-tenant SaaS web application using Azure AD & OpenID Connect](https://azure.microsoft.com/en-us/resources/samples/active-directory-dotnet-webapp-multitenant-openidconnect/).
 
+**SyncData WebJob**
+
+The sync data WebJob is a standalone Python app. It is located in `/webjobs/sync_data` folder and will be deployed to `/App_Data/jobs/triggered/` folder of the Web App after the deployment.
+
+This app was created to demonstrate differential query. Please check [Differential query](#differential-query) section for more details.
+
 ### Office 365 Education API
 
-The [Office 365 Education APIs](https://msdn.microsoft.com/office/office365/api/school-rest-operations) return data from any Office 365 tenant which has been synced to the cloud by Microsoft School Data Sync. The APIs provide information about schools, sections, teachers, students, and rosters. The Schools REST API provides access to school entities in Office 365 for Education tenants.
+The [Office 365 Education APIs](https://msdn.microsoft.com/office/office365/api/school-rest-operations) return data from any Office 365 tenant which has been synced to the cloud by Microsoft School Data Sync. The APIs provide information about schools, classes, teachers, students, and rosters. The Schools REST API provides access to school entities in Office 365 for Education tenants.
 
 In this sample, the **Microsoft.Education** Class Library project encapsulates the Office 365 Education API. 
 
@@ -327,49 +433,85 @@ The **EducationServiceClient** is the core class of the library. It is used to e
 
 **Get schools**
 
-~~~typescript
+~~~python
 def get_schools(self):
-    url = self.api_base_uri + 'administrativeUnits'
+    url = self.api_base_uri + 'education/schools'
     return self.rest_api_service.get_object_list(url, self.access_token, model=School)
 ~~~
 
-~~~typescript
+~~~python
 def get_school(self, object_id):
-    url = self.api_base_uri + 'administrativeUnits/%s' % object_id
+    url = self.api_base_uri + 'education/schools/%s' % school_id
     return self.rest_api_service.get_object(url, self.access_token, model=School)
 ~~~
 
 **Get classes**
 
-~~~typescript
-def get_sections(self, school_id, top=12, nextlink=''):
+~~~python
+def get_classes(self, school_id, top=12, nextlink=''):
     skiptoken = self._get_skip_token(nextlink)
-    url = self.api_base_uri + "groups?$filter=extension_fe2174665583431c953114ff7268b7b3_Education_ObjectType eq 'Section' and extension_fe2174665583431c953114ff7268b7b3_Education_SyncSource_SchoolId eq '%s'&$top=%s%s" % (school_id, top, skiptoken)
+    url = self.api_base_uri + "education/schools/%s/classes?$expand=schools&$top=%s&skiptoken=%s" % (school_id, top, skiptoken)
     return self.rest_api_service.get_object_list(url, self.access_token, model=Section, next_key='odata.nextLink')
 ~~~
 
-```typescript
-def get_section(self, object_id):
-    url = self.api_base_uri + 'groups/%s' % object_id
-    return self.rest_api_service.get_object(url, self.access_token, model=Section)
+```python
+  def get_class(self, class_id):
+        '''
+        Get a section by using the object_id.
+        <param name="object_id">The Object ID of the section.</param>
+        '''
+        url = self.api_base_uri + "education/classes/%s" % class_id
+        return self.rest_api_service.get_object(url, self.access_token, model=Class)
 ```
-**Get users**
+**Manage Assignments**
 
-```typescript
-def get_members(self, object_id, top=12, nextlink=''):
-    skiptoken = self._get_skip_token(nextlink)
-    url = self.api_base_uri + 'administrativeUnits/%s/members?$top=%s%s' % (object_id, top, skiptoken)
-    return self.rest_api_service.get_object_list(url, self.access_token, model=EduUser, next_key='odata.nextLink')
+```python
+    def get_assignments(self,class_id):
+        '''
+        Get assignments of a class.
+        '''
+        url = self.api_base_uri + 'education/classes/' +class_id + "/assignments"     
+        return self.rest_api_service.get_object_list(url, self.access_token, model=Assignment)
 ```
+```python
+    def add_assignment(self,class_id,name,dueDateTime):
+        url = self.api_base_uri + 'education/classes/' +class_id + "/assignments"       
+        data={"displayName":name,"status":"draft","dueDateTime":dueDateTime,"allowStudentsToAddResourcesToSubmission":"true","assignTo":{"@odata.type":"#microsoft.graph.educationAssignmentClassRecipient"}}
+        return self.rest_api_service.post_json(url,self.access_token,None,data)
+```
+
+```python
+    def get_Assignment_Resources(self,class_id,assignment_id):
+        url = self.api_base_uri + "education/classes/"+class_id+"/assignments/"+assignment_id+"/resources";
+        return self.rest_api_service.get_object_list(url, self.access_token, model=AssignmentResource)
+```
+
 Below are some screenshots of the sample app that show the education data.
 
 ![](Images/edu-schools.png)
 
-![](Images/edu-users.png)
-
 ![](Images/edu-classes.png)
 
 ![](Images/edu-class.png)
+
+### Differential Query
+
+A [differential query](https://msdn.microsoft.com/en-us/Library/Azure/Ad/Graph/howto/azure-ad-graph-api-differential-query) request returns all changes made to specified entities during the time between two consecutive requests. For example, if you make a differential query request an hour after the previous differential query request, only the changes made during that hour will be returned. This functionality is especially useful when synchronizing tenant directory data with an application’s data store.
+
+The related code is in `/webjobs/sync_data/user_data_sync_service.py`.
+
+Below is the log generated by the SyncData WebJob:
+
+```
+[05/10/2018 10:09:01 > 35fbc4: INFO] D:\local\Temp\jobs\triggered\sync_data\ffdz2cvn.5q5>D:\home\python353x64\python.exe start.py 
+[05/10/2018 10:09:05 > 35fbc4: INFO] Starting to sync users for the Canviz EDU organization.
+[05/10/2018 10:09:05 > 35fbc4: INFO] 	Executing Differential Query
+[05/10/2018 10:09:05 > 35fbc4: INFO] 	Get 1 user(s).
+[05/10/2018 10:09:05 > 35fbc4: INFO] 	Updating user: admin@canvizEDU.onmicrosoft.com
+[05/10/2018 10:09:05 > 35fbc4: INFO] 		Job title: Chief Technology Officer
+[05/10/2018 10:09:05 > 35fbc4: INFO] 		Department: IT
+[05/10/2018 10:09:05 > 35fbc4: SYS INFO] Status changed to Success
+```
 
 ### Authentication Flows
 
@@ -389,13 +531,25 @@ The first 2 flows (Local Login/O365 Login) enable users to login in with either 
 
 This flow shows how an administrator logs into the system and performs administrative operations.
 
-After logging into the app with an Office 365 account,the administrator will be asked to link to a local account. This step is not required and can be skipped. 
+After logging into the app with an Office 365 account, the administrator will be asked to link to a local account. This step is not required and can be skipped. 
 
 As mentioned earlier, the web app is a multi-tenant app which uses some application permissions, so tenant administrator must consent the app first.  
 
 This flow is implemented in the AdminController. 
 
 ![](Images/auth-flow-admin-login.png)
+
+**Application Authentication Flow**
+
+This flow in implemented in the SyncData WebJob.
+
+![](Images/auth-flow-app-login.png)
+
+An X509 certificate is used. For more details, please check the following links:
+
+- [Daemon or Server Application to Web API](https://docs.microsoft.com/en-us/azure/active-directory/active-directory-authentication-scenarios#daemon-or-server-application-to-web-api)
+- [Authenticating to Azure AD in daemon apps with certificates](https://azure.microsoft.com/en-us/resources/samples/active-directory-dotnet-daemon-certificate-credential/)
+- [Build service and daemon apps in Office 365](https://msdn.microsoft.com/en-us/office/office365/howto/building-service-apps-in-office-365)
 
 ### Two Kinds of Graph APIs
 
