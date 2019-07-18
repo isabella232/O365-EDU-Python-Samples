@@ -1,10 +1,10 @@
 ---
 topic: sample
 products:
-- Office 365
+- office-365
 languages:
-- Python
-- JavaScript
+- python
+- javascript
 extensions:
   contentType: samples
   technologies:
