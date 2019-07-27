@@ -1,10 +1,14 @@
 ---
 page_type: sample
 products:
+- office
 - office-365
+- office-ms-graph
 languages:
 - python
 - javascript
+description: "How to integrate with school roles/roster data as well as O365 services available via the Graph API."
+urlFragment: edu-graph-api-python
 extensions:
   contentType: samples
   technologies:
@@ -13,10 +17,11 @@ extensions:
   - Office 365
   - Eduation
   - Education
-  createdDate: 6/6/2016 1:23:24 PM
+  createdDate: "6/6/2016 1:23:24 PM"
   scenarios:
   - Education
 ---
+
 # EDUGraphAPI - Office 365 Education Code Sample
 
 In this sample, we show you how to integrate with school roles/roster data as well as O365 services available via the Graph API. 
