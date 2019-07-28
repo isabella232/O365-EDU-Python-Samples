@@ -339,7 +339,7 @@ Users from any Azure Active Directory tenant can access this app. Some permissio
 
 ![](Images/app-requires-admin-to-consent.png)
 
-For more information, see [Build a multi-tenant SaaS web application using Azure AD & OpenID Connect](https://azure.microsoft.com/en-us/resources/samples/active-directory-dotnet-webapp-multitenant-openidconnect/).
+For more information, see [Build a multi-tenant SaaS web application using Azure AD & OpenID Connect](https://azure.microsoft.com/resources/samples/active-directory-dotnet-webapp-multitenant-openidconnect/).
 
 ### Office 365 Education API
 
