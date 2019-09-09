@@ -3,7 +3,7 @@ page_type: sample
 products:
 - office
 - office-365
-- office-ms-graph
+- ms-graph
 languages:
 - python
 - javascript
